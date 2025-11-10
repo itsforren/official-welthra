@@ -1,7 +1,8 @@
 // app/api/chat/route.ts
 
-// 1. Import the openai provider AND the pre-built fileSearchTool
-import { openai, fileSearchTool } from '@ai-sdk/openai';
+// 1. Import the openai provider AND the *experimental* fileSearchTool
+//    This is the key fix.
+import { openai, experimental_fileSearchTool } from '@ai-sdk/openai';
 
 // 2. Import streamText AND the converter function
 import { streamText, convertToModelMessages } from 'ai';
@@ -23,9 +24,9 @@ export async function POST(req: Request) {
     model: openai(process.env.OPENAI_PROMPT_ID!),
 
     // 8. THIS IS THE FIX:
-    //    Import and call the pre-built fileSearchTool
+    //    Use the *experimental* tool import
     tools: {
-      fileSearch: fileSearchTool()
+      fileSearch: experimental_fileSearchTool()
     },
 
     // 9. Pass the *converted* message history
