@@ -1,8 +1,7 @@
 // app/api/chat/route.ts
 
-// 1. Import the openai provider AND the *experimental* fileSearchTool
-//    This is the key fix.
-import { openai, experimental_fileSearchTool } from '@ai-sdk/openai';
+// 1. Import *only* the openai provider
+import { openai } from '@ai-sdk/openai';
 
 // 2. Import streamText AND the converter function
 import { streamText, convertToModelMessages } from 'ai';
@@ -19,18 +18,19 @@ export async function POST(req: Request) {
 
   // 6. Call the core streamText function
   const result = await streamText({
-    
-    // 7. Pass the Prompt ID *as the model*
+
+    // 7. THIS IS THE KEY:
+    //    Pass the Prompt ID *as the model*.
+    //    This single ID tells OpenAI to use your
+    //    model, your instructions, AND your File Search (RAG).
     model: openai(process.env.OPENAI_PROMPT_ID!),
 
-    // 8. THIS IS THE FIX:
-    //    Use the *experimental* tool import
-    tools: {
-      fileSearch: experimental_fileSearchTool()
-    },
-
-    // 9. Pass the *converted* message history
+    // 8. Pass the *converted* message history
     messages: modelMessages,
+
+    // 9. (REMOVED)
+    //    We remove the 'tools' object entirely.
+    //    It's not needed and was breaking the build.
   });
 
   // 10. Stream the response back to assistant-ui
