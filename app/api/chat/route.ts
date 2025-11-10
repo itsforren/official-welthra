@@ -1,61 +1,29 @@
-import OpenAI from "openai";
-import { AssistantResponse } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { frontendTools } from "@assistant-ui/react-ai-sdk";
+import { convertToModelMessages, streamText } from "ai";
 import { PROMPT_CONFIG } from "./config";
 
 export const maxDuration = 30;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// System prompt from your OpenAI Responses API configuration
+// You can customize this or fetch it dynamically from your prompt management system
+const SYSTEM_PROMPT = `You are a helpful AI assistant. Follow the instructions from prompt ID: ${PROMPT_CONFIG.id} version ${PROMPT_CONFIG.version}`;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, system, tools } = await req.json();
 
-  // Get the latest user message
-  const userMessage = messages[messages.length - 1]?.content || "";
+  // Use the system prompt from the configuration or fall back to the one from the request
+  const effectiveSystem = system || SYSTEM_PROMPT;
 
-  // Create a response stream
-  return AssistantResponse(
-    { threadId: "thread_1" },
-    async ({ sendMessage, sendDataMessage }) => {
-      try {
-        // Call OpenAI Responses API with your prompt ID
-        const response = await openai.responses.create({
-          prompt: {
-            id: PROMPT_CONFIG.id,
-            version: PROMPT_CONFIG.version,
-          },
-          // Pass the user's message as input
-          input: userMessage,
-          stream: true,
-        });
+  const result = streamText({
+    model: openai("gpt-4o"),
+    messages: convertToModelMessages(messages),
+    system: effectiveSystem,
+    tools: {
+      ...frontendTools(tools),
+      // add backend tools here
+    },
+  });
 
-        // Stream the response
-        let fullContent = "";
-        for await (const chunk of response) {
-          if (chunk.choices?.[0]?.delta?.content) {
-            const content = chunk.choices[0].delta.content;
-            fullContent += content;
-          }
-        }
-
-        // Send the complete message
-        sendMessage({
-          role: "assistant",
-          content: [{ type: "text", text: fullContent }],
-        });
-      } catch (error) {
-        console.error("Error calling OpenAI Responses API:", error);
-        sendMessage({
-          role: "assistant",
-          content: [
-            {
-              type: "text",
-              text: "Sorry, I encountered an error. Please try again.",
-            },
-          ],
-        });
-      }
-    }
-  );
+  return result.toUIMessageStreamResponse();
 }
