@@ -18,15 +18,26 @@ export async function POST(req: Request) {
 
   // 6. Call the core streamText function
   const result = await streamText({
-    
-    // 7. Pass the Prompt ID *as the model*
-    model: openai(process.env.OPENAI_PROMPT_ID!),
 
-    // 8. Pass the *converted* message history
+    // 7. THIS IS THE FIX (A):
+    //    Explicitly define the model. This MUST match
+    //    the model you selected inside your Prompt on the dashboard.
+    model: openai('gpt-4o'), // Or 'gpt-5' etc.
+
+    // 8. THIS IS THE FIX (B):
+    //    Explicitly pass the Prompt ID in the 'prompt' field.
+    prompt: {
+      id: process.env.OPENAI_PROMPT_ID!
+    },
+
+    // 9. Pass the *converted* message history
     messages: modelMessages,
+
+    // 10. (REMOVED)
+    //     The 'tools' object is not needed because your Prompt ID
+    //     already includes the File Search tool by default.
   });
 
-  // 9. THIS IS THE FIX:
-  //    Stream the response back using the new function name
+  // 11. Stream the response back
   return result.toTextStreamResponse();
 }
