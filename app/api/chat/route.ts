@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     console.log("✅ Streaming from Responses API with File Search enabled");
 
     // 8. Stream the response back to assistant-ui in the correct format
-    return result.toTextStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (error: any) {
     console.error("❌ Error in Responses API route:", error);
     console.error("Error details:", {
