@@ -1,7 +1,7 @@
 // app/api/chat/route.ts
 
 // 1. Import *only* the openai provider
-import { openai } from '@ai-sdk/openai';
+import { openai } from '@ai-sdk/openai'; 
 
 // 2. Import streamText AND the converter function
 import { streamText, convertToModelMessages } from 'ai';
@@ -10,10 +10,10 @@ import { streamText, convertToModelMessages } from 'ai';
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
-  // 4. Get the messages from the assistant-ui frontend
+  // 4. Get the messages
   const { messages } = await req.json();
 
-  // 5. Convert the UI messages
+  // 5. Convert the messages
   const modelMessages = convertToModelMessages(messages);
 
   // 6. Call the core streamText function
@@ -38,6 +38,6 @@ export async function POST(req: Request) {
     //     already includes the File Search tool by default.
   });
 
-  // 11. Stream the response back
+  // 11. Stream the response back using the correct function name
   return result.toTextStreamResponse();
 }
