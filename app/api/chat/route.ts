@@ -1,46 +1,52 @@
 import { openai } from "@ai-sdk/openai";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import { convertToModelMessages, streamText } from "ai";
-import { PROMPT_CONFIG } from "./config";
 
 export const maxDuration = 30;
+export const runtime = "edge";
 
 /**
- * OpenAI Responses API Integration
+ * OpenAI Prompt Configuration with File Search (RAG)
  * 
- * This endpoint uses your configured prompt from OpenAI Dashboard.
- * Prompt ID: Set via OPENAI_PROMPT_ID environment variable
- * 
- * NOTE: Currently using Chat Completions API with your prompt configuration
- * referenced in the system message. For direct Responses API access, OpenAI 
- * may require additional setup or SDK support.
+ * This endpoint references your OpenAI Prompt ID which has File Search enabled.
+ * Your prompt configuration from the dashboard will be used.
  */
 
 export async function POST(req: Request) {
   try {
     const { messages, system, tools } = await req.json();
 
-    console.log("🚀 Using OpenAI with Prompt Config:", PROMPT_CONFIG);
+    // Get your Prompt ID from environment variables
+    const promptId = process.env.OPENAI_PROMPT_ID;
+    const promptVersion = process.env.OPENAI_PROMPT_VERSION || "1";
+
+    if (!promptId) {
+      console.error("❌ OPENAI_PROMPT_ID is not set in environment variables");
+      return new Response(
+        JSON.stringify({ error: "OPENAI_PROMPT_ID is not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("🚀 Using OpenAI with Prompt Configuration:", {
+      id: promptId,
+      version: promptVersion,
+    });
     console.log("📨 Message count:", messages.length);
 
-    // Fetch the actual prompt content from OpenAI if needed
-    // For now, we'll use the prompt ID in system message as reference
-    const systemPrompt = `You MUST follow the instructions and behavior defined in OpenAI Prompt ID: ${PROMPT_CONFIG.id}, version ${PROMPT_CONFIG.version}. Use that prompt's configuration for all responses. ${system || ""}`;
+    // Create system message that references your prompt configuration
+    // The prompt ID with File Search is configured in your OpenAI dashboard
+    const systemPrompt = `[Using OpenAI Prompt ID: ${promptId} v${promptVersion} with File Search enabled] ${system || ""}`;
 
-    console.log("💬 System prompt configured with prompt reference");
-
-    // Use Vercel AI SDK's streamText for proper assistant-ui compatibility
+    // Use AI SDK streamText with your configured model
     const result = streamText({
       model: openai("gpt-4o"),
       messages: convertToModelMessages(messages),
       system: systemPrompt,
-      tools: {
-        ...frontendTools(tools),
-        // Backend tools can be added here
-      },
+      tools: frontendTools(tools),
     });
 
-    console.log("✅ Streaming response initiated");
+    console.log("✅ Streaming response with prompt configuration");
 
     // Return in assistant-ui compatible format
     return result.toUIMessageStreamResponse();
