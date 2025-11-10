@@ -1,43 +1,31 @@
 // app/api/chat/route.ts
 
-// 1. Import *only* the openai provider
-import { openai } from '@ai-sdk/openai';
+// 1. Import the *correct* function for Assistants/Prompts
+import { streamAssistant } from 'ai/openai';
 
-// 2. Import streamText AND the converter function
-import { streamText, convertToModelMessages } from 'ai';
-
-// 3. Set the runtime to 'edge' for speed
+// 2. Set the runtime to 'edge' for speed
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
-  // 4. Get the messages from the assistant-ui frontend
-  const { messages } = await req.json();
+  // 3. Get the message and threadId from the assistant-ui frontend
+  const { threadId, message } = await req.json();
 
-  // 5. Convert the UI messages
-  const modelMessages = convertToModelMessages(messages);
+  // 4. Call the streamAssistant function
+  const result = await streamAssistant({
 
-  // 6. Call the core streamText function
-  const result = await streamText({
+    // 5. THIS IS THE FIX:
+    //    Use the 'assistantId' parameter for your Prompt ID.
+    //    The Vercel AI SDK knows that 'pmpt_...' is a Prompt.
+    assistantId: process.env.OPENAI_PROMPT_ID!,
 
-    // 7. THIS IS THE FIX (A):
-    //    Explicitly define the model. This MUST match
-    //    the model you selected inside your Prompt on the dashboard.
-    model: openai('gpt-4o'), // Or 'gpt-5' etc.
+    // 6. Pass the threadId (if it exists)
+    //    The SDK will create a new thread if it's null
+    threadId,
 
-    // 8. THIS IS THE FIX (B):
-    //    Explicitly pass the Prompt ID in the 'prompt' field.
-    prompt: {
-      id: process.env.OPENAI_PROMPT_ID!
-    },
-
-    // 9. Pass the *converted* message history
-    messages: modelMessages,
-
-    // 10. (REMOVED)
-    //     The 'tools' object is not needed because your Prompt ID
-    //     already includes the File Search tool by default.
+    // 7. Pass the new user message
+    message,
   });
 
-  // 11. Stream the response back
-  return result.toTextStreamResponse();
+  // 8. Stream the assistant's response (which assistant-ui expects)
+  return result.toAIStreamResponse();
 }
