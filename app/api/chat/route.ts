@@ -1,8 +1,8 @@
 // 1. Import the correct Vercel AI SDK provider for OpenAI
 import { openai } from '@ai-sdk/openai';
 
-// 2. Import the core streamText function
-import { streamText } from 'ai';
+// 2. Import the core streamText function and message converter
+import { streamText, convertToModelMessages } from 'ai';
 
 // 3. Set the runtime to 'edge' for speed
 export const runtime = 'edge';
@@ -34,6 +34,11 @@ export async function POST(req: Request) {
 
     console.log("🚀 Using OpenAI Responses API with Prompt ID:", promptId);
     console.log("📨 Message count:", messages.length);
+    console.log("📝 Raw messages:", JSON.stringify(messages, null, 2));
+
+    // Convert assistant-ui messages (with 'parts') to AI SDK ModelMessages (with 'content')
+    const convertedMessages = convertToModelMessages(messages);
+    console.log("✅ Messages converted to ModelMessage format");
 
     // 4. Call the core streamText function
     const result = await streamText({
@@ -43,8 +48,8 @@ export async function POST(req: Request) {
       //    File Search is automatically enabled from your prompt configuration
       model: openai(promptId),
 
-      // 7. Pass the conversation history
-      messages,
+      // 7. Pass the CONVERTED conversation history
+      messages: convertedMessages,
     });
 
     console.log("✅ Streaming from Responses API with File Search enabled");
