@@ -1,24 +1,28 @@
-import { openai } from "@ai-sdk/openai";
-import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { convertToModelMessages, streamText } from "ai";
+// 1. Import the correct Vercel AI SDK provider for OpenAI
+import { openai } from '@ai-sdk/openai';
+
+// 2. Import the core streamText function
+import { streamText } from 'ai';
+
+// 3. Set the runtime to 'edge' for speed
+export const runtime = 'edge';
 
 export const maxDuration = 30;
-export const runtime = "edge";
 
 /**
- * OpenAI Prompt Configuration with File Search (RAG)
+ * OpenAI Responses API with Prompt ID and File Search (RAG)
  * 
- * This endpoint references your OpenAI Prompt ID which has File Search enabled.
- * Your prompt configuration from the dashboard will be used.
+ * This endpoint uses your Prompt ID from the OpenAI dashboard.
+ * The Prompt ID is passed AS THE MODEL parameter, which tells the SDK
+ * to use the Responses API with your configured prompt and File Search.
  */
 
 export async function POST(req: Request) {
   try {
-    const { messages, system, tools } = await req.json();
+    const { messages } = await req.json();
 
     // Get your Prompt ID from environment variables
     const promptId = process.env.OPENAI_PROMPT_ID;
-    const promptVersion = process.env.OPENAI_PROMPT_VERSION || "1";
 
     if (!promptId) {
       console.error("❌ OPENAI_PROMPT_ID is not set in environment variables");
@@ -28,30 +32,27 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("🚀 Using OpenAI with Prompt Configuration:", {
-      id: promptId,
-      version: promptVersion,
-    });
+    console.log("🚀 Using OpenAI Responses API with Prompt ID:", promptId);
     console.log("📨 Message count:", messages.length);
 
-    // Create system message that references your prompt configuration
-    // The prompt ID with File Search is configured in your OpenAI dashboard
-    const systemPrompt = `[Using OpenAI Prompt ID: ${promptId} v${promptVersion} with File Search enabled] ${system || ""}`;
+    // 4. Call the core streamText function
+    const result = await streamText({
+      // 5. THIS IS THE MAGIC:
+      //    Pass the Prompt ID (from .env.local) *as the model*
+      //    The SDK recognizes it's a Prompt ID and calls the Responses API
+      //    File Search is automatically enabled from your prompt configuration
+      model: openai(promptId),
 
-    // Use AI SDK streamText with your configured model
-    const result = streamText({
-      model: openai("gpt-4o"),
-      messages: convertToModelMessages(messages),
-      system: systemPrompt,
-      tools: frontendTools(tools),
+      // 7. Pass the conversation history
+      messages,
     });
 
-    console.log("✅ Streaming response with prompt configuration");
+    console.log("✅ Streaming from Responses API with File Search enabled");
 
-    // Return in assistant-ui compatible format
-    return result.toUIMessageStreamResponse();
+    // 8. Stream the response back to assistant-ui in the correct format
+    return result.toTextStreamResponse();
   } catch (error: any) {
-    console.error("❌ Error in chat route:", error);
+    console.error("❌ Error in Responses API route:", error);
     console.error("Error details:", {
       message: error.message,
       stack: error.stack,
